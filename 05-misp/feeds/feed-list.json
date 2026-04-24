@@ -1,0 +1,110 @@
+{
+  "feeds": [
+    {
+      "name": "CIRCL OSINT Feed",
+      "provider": "CIRCL",
+      "url": "https://www.circl.lu/doc/misp/feed-osint",
+      "enabled": true,
+      "rules": "",
+      "distribution": "0",
+      "input_source": "network",
+      "delete_local_file": false,
+      "tag_id": "1",
+      "fixed_event": false,
+      "delta_merge": false,
+      "publish": true
+    },
+    {
+      "name": "Abuse.ch MalwareBazaar",
+      "provider": "abuse.ch",
+      "url": "https://mb-api.abuse.ch/downloads/misp/",
+      "enabled": true,
+      "rules": "",
+      "distribution": "0",
+      "input_source": "network",
+      "delete_local_file": false
+    },
+    {
+      "name": "Abuse.ch URLhaus",
+      "provider": "abuse.ch",
+      "url": "https://urlhaus.abuse.ch/downloads/misp/",
+      "enabled": true,
+      "rules": "",
+      "distribution": "0",
+      "input_source": "network",
+      "delete_local_file": false
+    },
+    {
+      "name": "Abuse.ch ThreatFox",
+      "provider": "abuse.ch",
+      "url": "https://threatfox.abuse.ch/downloads/misp/",
+      "enabled": true,
+      "rules": "",
+      "distribution": "0",
+      "input_source": "network",
+      "delete_local_file": false
+    },
+    {
+      "name": "MISP Botnet Tracker",
+      "provider": "MISP Project",
+      "url": "https://www.misp-project.org/feeds/botnet-cc-tracker.json",
+      "enabled": true,
+      "rules": "",
+      "distribution": "0",
+      "input_source": "network",
+      "delete_local_file": false
+    },
+    {
+      "name": "Feodo Tracker C2 IP Blocklist",
+      "provider": "abuse.ch",
+      "url": "https://feodotracker.abuse.ch/downloads/misp/",
+      "enabled": true,
+      "rules": "",
+      "distribution": "0",
+      "input_source": "network",
+      "delete_local_file": false
+    },
+    {
+      "name": "PhishTank",
+      "provider": "PhishTank",
+      "url": "https://data.phishtank.com/data/online-valid.json",
+      "enabled": true,
+      "rules": "",
+      "distribution": "0",
+      "input_source": "network",
+      "delete_local_file": false
+    },
+    {
+      "name": "AlienVault OTX",
+      "provider": "AlienVault",
+      "url": "https://otx.alienvault.com/taxii/discovery",
+      "enabled": false,
+      "note": "Requires API key from otx.alienvault.com"
+    },
+    {
+      "name": "COVID-19-Related Malware",
+      "provider": "MISP Project",
+      "url": "https://raw.githubusercontent.com/MISP/MISP-sightings-report/main/covid.json",
+      "enabled": false
+    },
+    {
+      "name": "ESET Malware IOCs",
+      "provider": "ESET",
+      "url": "https://github.com/eset/malware-ioc",
+      "enabled": false,
+      "note": "Manual import from ESET GitHub"
+    }
+  ],
+  "tags": [
+    {"name": "tlp:white", "colour": "#ffffff"},
+    {"name": "tlp:green", "colour": "#33cc00"},
+    {"name": "tlp:amber", "colour": "#ffc000"},
+    {"name": "tlp:red", "colour": "#cc0033"},
+    {"name": "mitre-attack:T1071", "colour": "#0080ff"},
+    {"name": "mitre-attack:T1566", "colour": "#ff8000"},
+    {"name": "type:malware", "colour": "#cc0000"},
+    {"name": "type:botnet", "colour": "#990099"},
+    {"name": "type:c2", "colour": "#ff0000"},
+    {"name": "workflow:state=complete", "colour": "#009900"}
+  ]
+}

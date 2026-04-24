@@ -1,0 +1,59 @@
+{
+  "name": "RITA Beaconing Auto-Response",
+  "description": "When RITA detects beaconing (score > 0.7), auto-investigate and block C2",
+  "triggers": [
+    {
+      "name": "RITA Beacon Alert",
+      "type": "WEBHOOK",
+      "description": "RITA posts beacon alerts to this endpoint"
+    }
+  ],
+  "actions": [
+    {
+      "id": "parse-beacon",
+      "name": "Parse Beacon Data",
+      "app_name": "Shuffle Tools",
+      "action": "parse_value",
+      "parameters": {
+        "input": "$exec.body",
+        "fields": ["source_ip", "destination_ip", "beacon_score", "connection_count"]
+      }
+    },
+    {
+      "id": "misp-lookup",
+      "name": "Check Destination IP in MISP",
+      "app_name": "MISP",
+      "action": "search_attributes",
+      "parameters": {
+        "type": "ip-dst",
+        "value": "$parse-beacon.destination_ip"
+      }
+    },
+    {
+      "id": "velociraptor-query",
+      "name": "Query Source Host via Velociraptor",
+      "app_name": "HTTP",
+      "action": "post",
+      "parameters": {
+        "url": "https://192.168.50.30:8000/api/v1/queries",
+        "body": {
+          "query": "SELECT Pid, Name, CommandLine, Username FROM pslist() WHERE Name =~ '(nc|ncat|python|curl)'"
+        }
+      }
+    },
+    {
+      "id": "create-case",
+      "name": "Create Beaconing Case in TheHive",
+      "app_name": "TheHive",
+      "action": "create_case",
+      "parameters": {
+        "title": "C2 Beaconing Detected: $parse-beacon.source_ip → $parse-beacon.destination_ip",
+        "severity": "3",
+        "description": "RITA beacon score: $parse-beacon.beacon_score\nConnections: $parse-beacon.connection_count\nSource: $parse-beacon.source_ip\nDestination: $parse-beacon.destination_ip\n\nVelociraptor process check: $velociraptor-query.result",
+        "tags": ["beaconing", "c2", "rita", "auto-detection"]
+      }
+    }
+  ],
+  "tags": ["rita", "beaconing", "c2", "velociraptor"],
+  "version": "1.0.0"
+}

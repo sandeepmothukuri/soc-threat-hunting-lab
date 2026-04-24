@@ -1,0 +1,52 @@
+{
+  "name": "MISP → TheHive IOC Alert",
+  "description": "When MISP gets a new high-severity event, auto-create TheHive alert",
+  "triggers": [
+    {
+      "name": "MISP New Event",
+      "type": "SCHEDULE",
+      "description": "Poll MISP for new events every 30 minutes",
+      "parameters": {
+        "interval": "*/30 * * * *"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "fetch-misp-events",
+      "name": "Get Recent MISP Events",
+      "app_name": "MISP",
+      "action": "search_events",
+      "parameters": {
+        "threat_level": "1",
+        "published": "true",
+        "last": "30m"
+      }
+    },
+    {
+      "id": "filter-high-severity",
+      "name": "Filter High/Critical Events",
+      "app_name": "Shuffle Tools",
+      "action": "filter",
+      "parameters": {
+        "input": "$fetch-misp-events",
+        "filter": "threat_level_id == 1"
+      }
+    },
+    {
+      "id": "create-thehive-alert",
+      "name": "Create TheHive Alert",
+      "app_name": "TheHive",
+      "action": "create_alert",
+      "parameters": {
+        "title": "[MISP] $filter-high-severity.Event.info",
+        "type": "MISP",
+        "source": "MISP-Shuffle-Sync",
+        "severity": "3",
+        "description": "MISP Event ID: $filter-high-severity.Event.id\nOrg: $filter-high-severity.Event.Orgc.name\nDate: $filter-high-severity.Event.date\n\nTags: $filter-high-severity.Event.Tag[*].name"
+      }
+    }
+  ],
+  "tags": ["misp", "thehive", "intel-sync"],
+  "version": "1.0.0"
+}

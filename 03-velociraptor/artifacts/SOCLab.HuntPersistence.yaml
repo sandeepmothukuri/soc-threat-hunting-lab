@@ -1,0 +1,98 @@
+name: SOCLab.HuntPersistence
+description: |
+  Hunt for common persistence mechanisms across all endpoints.
+  Covers: Cron, systemd, init.d, bashrc, authorized_keys, SUID binaries,
+  LD_PRELOAD, /etc/passwd modifications.
+
+  MITRE ATT&CK: T1053, T1543, T1546, T1548, T1098
+
+author: SOC Lab
+type: CLIENT
+
+parameters:
+  - name: TargetDir
+    default: /
+  - name: MaxSize
+    default: "100000000"
+
+sources:
+  - name: CronJobs
+    description: All cron entries across system and user crontabs
+    query: |
+      -- System cron directories
+      LET cron_dirs = SELECT FullPath FROM glob(
+          globs=["/etc/cron.*/*", "/var/spool/cron/*", "/etc/crontab"])
+
+      SELECT FullPath, Mtime, Ctime, Size,
+             read_file(filename=FullPath, length=500) AS Content
+      FROM cron_dirs
+      WHERE NOT IsDir
+
+  - name: SystemdServices
+    description: All systemd service files (hunt for malicious persistence)
+    query: |
+      SELECT FullPath, Mtime, Ctime, Size,
+             read_file(filename=FullPath, length=1000) AS Content
+      FROM glob(globs=[
+          "/etc/systemd/system/*.service",
+          "/lib/systemd/system/*.service",
+          "/usr/lib/systemd/system/*.service",
+          "~/.config/systemd/user/*.service"
+      ])
+      WHERE Content =~ "ExecStart"
+        AND NOT FullPath =~ "(apt|dpkg|networkd|ssh|cron|getty|rsyslog)"
+
+  - name: SUIDFiles
+    description: All SUID/SGID binaries (potential privilege escalation)
+    query: |
+      SELECT FullPath, Mode, Mtime, Atime, Ctime, Size,
+             hash(path=FullPath) AS Hash
+      FROM glob(globs=["/bin/*", "/usr/bin/*", "/sbin/*", "/usr/sbin/*", "/tmp/*"])
+      WHERE Mode =~ "s"   -- Has setuid or setgid bit
+
+  - name: AuthorizedKeys
+    description: SSH authorized_keys files (backdoor keys)
+    query: |
+      SELECT FullPath, Mtime, Ctime, Size,
+             read_file(filename=FullPath) AS Content
+      FROM glob(globs=[
+          "/root/.ssh/authorized_keys",
+          "/home/*/.ssh/authorized_keys"
+      ])
+
+  - name: ShellStartup
+    description: Shell startup files (.bashrc, .profile, .bash_profile)
+    query: |
+      LET startup_files = SELECT FullPath FROM glob(globs=[
+          "/root/.bashrc", "/root/.profile", "/root/.bash_profile",
+          "/home/*/.bashrc", "/home/*/.profile", "/home/*/.bash_profile",
+          "/etc/profile", "/etc/profile.d/*.sh", "/etc/bash.bashrc"
+      ])
+
+      SELECT FullPath, Mtime,
+             read_file(filename=FullPath, length=2000) AS Content
+      FROM startup_files
+      WHERE Content =~ "(curl|wget|nc|bash -i|python|perl|ruby|eval)"
+
+  - name: LDPreload
+    description: LD_PRELOAD hijacking (library injection persistence)
+    query: |
+      SELECT FullPath, Mtime,
+             read_file(filename=FullPath) AS Content
+      FROM glob(globs=["/etc/ld.so.preload"])
+
+      UNION ALL
+
+      SELECT FullPath, Mtime,
+             read_file(filename=FullPath, length=500) AS Content
+      FROM glob(globs=["/etc/profile.d/*.sh"])
+      WHERE Content =~ "LD_PRELOAD"
+
+  - name: NewAccounts
+    description: User accounts created recently (last 30 days)
+    query: |
+      SELECT User, Uid, Gid, Comment, HomeDir, Shell,
+             {SELECT Mtime FROM stat(filename=HomeDir)} AS HomeMtime
+      FROM users()
+      WHERE Uid >= 1000
+        AND Shell =~ "(/bash|/sh|/zsh)"

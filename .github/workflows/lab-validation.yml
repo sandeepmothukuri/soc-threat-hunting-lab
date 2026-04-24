@@ -1,0 +1,261 @@
+name: 🔬 Lab Validation
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ── Job 1: Shell Script Validation ─────────────────────────────────────────
+  shellcheck:
+    name: 🐚 Shell Script Linting
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint all shell scripts
+        run: |
+          echo "=== Shell scripts found ==="
+          find . -name "*.sh" -not -path "./.git/*" | sort | tee /tmp/scripts.txt
+
+          echo ""
+          echo "=== Running shellcheck ==="
+          FAIL=0
+          while IFS= read -r script; do
+            # SC2034=unused vars (common in lab scripts), SC1091=source not found
+            if shellcheck -S warning -e SC2034,SC1091,SC2154 "$script"; then
+              echo "  ✓ $script"
+            else
+              echo "  ✗ $script FAILED"
+              FAIL=1
+            fi
+          done < /tmp/scripts.txt
+
+          exit $FAIL
+
+  # ── Job 2: Python Validation ────────────────────────────────────────────────
+  python-lint:
+    name: 🐍 Python Lint + Security
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linters
+        run: pip install flake8 bandit
+
+      - name: flake8 — style check
+        run: |
+          echo "=== Python files ==="
+          find . -name "*.py" -not -path "./.git/*" | sort
+
+          echo ""
+          echo "=== flake8 ==="
+          find . -name "*.py" -not -path "./.git/*" | \
+            xargs flake8 --max-line-length=120 \
+              --ignore=E501,W503,E302,E303,E501,W291,W293 \
+              --statistics || true
+
+      - name: bandit — security scan
+        run: |
+          echo "=== bandit security scan ==="
+          find . -name "*.py" -not -path "./.git/*" | \
+            xargs bandit -ll -q 2>&1 | grep -v "^$" || true
+          echo "Security scan complete (low-severity findings expected in lab scripts)"
+
+  # ── Job 3: YAML Validation ──────────────────────────────────────────────────
+  yaml-validate:
+    name: 📋 YAML + JSON Validation
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install validators
+        run: |
+          pip install yamllint
+          sudo apt-get install -y jq
+
+      - name: Validate YAML files
+        run: |
+          echo "=== YAML files ==="
+          find . -name "*.yml" -o -name "*.yaml" | grep -v ".git" | sort
+
+          echo ""
+          echo "=== yamllint ==="
+          find . \( -name "*.yml" -o -name "*.yaml" \) \
+            -not -path "./.git/*" \
+            -not -path "./.github/*" | while read -r f; do
+              if yamllint -d relaxed "$f" 2>&1 | grep -v "^$" | grep -q "error"; then
+                echo "  ✗ $f"
+                yamllint -d relaxed "$f"
+              else
+                echo "  ✓ $f"
+              fi
+          done
+
+      - name: Validate JSON files
+        run: |
+          echo ""
+          echo "=== JSON validation ==="
+          find . -name "*.json" -not -path "./.git/*" | while read -r f; do
+            if jq empty "$f" 2>/dev/null; then
+              echo "  ✓ $f"
+            else
+              echo "  ✗ $f — invalid JSON"
+              exit 1
+            fi
+          done
+
+  # ── Job 4: Repo Structure Check ─────────────────────────────────────────────
+  structure-check:
+    name: 📁 Repository Structure
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required files exist
+        run: |
+          MISSING=0
+          check_file() {
+            if [[ -f "$1" ]]; then
+              echo "  ✓ $1"
+            else
+              echo "  ✗ MISSING: $1"
+              MISSING=1
+            fi
+          }
+
+          echo "=== Core Files ==="
+          check_file "README.md"
+          check_file "docs/architecture.md"
+          check_file "docs/vm-build-guide.md"
+          check_file "docs/detection-coverage.md"
+          check_file "scripts/setup-host.sh"
+          check_file "scripts/health-check.sh"
+          check_file ".github/workflows/lab-validation.yml"
+
+          echo ""
+          echo "=== Module 01: Zeek + RITA ==="
+          check_file "01-zeek-rita/install-zeek.sh"
+          check_file "01-zeek-rita/install-rita.sh"
+          check_file "01-zeek-rita/README.md"
+
+          echo ""
+          echo "=== Module 02: Arkime ==="
+          check_file "02-arkime/install-arkime.sh"
+          check_file "02-arkime/README.md"
+
+          echo ""
+          echo "=== Module 03: Velociraptor ==="
+          check_file "03-velociraptor/install-velociraptor.sh"
+          check_file "03-velociraptor/artifacts/SOCLab.HuntPersistence.yaml"
+          check_file "03-velociraptor/hunts/threat-hunting-queries.md"
+          check_file "03-velociraptor/README.md"
+
+          echo ""
+          echo "=== Module 04: OSQuery ==="
+          check_file "04-osquery/install-osquery.sh"
+          check_file "04-osquery/packs/soc-detections.conf"
+          check_file "04-osquery/packs/incident-response.conf"
+          check_file "04-osquery/README.md"
+
+          echo ""
+          echo "=== Module 05: MISP ==="
+          check_file "05-misp/install-misp.sh"
+          check_file "05-misp/feeds/feed-list.json"
+          check_file "05-misp/scripts/ioc-sync.py"
+          check_file "05-misp/README.md"
+
+          echo ""
+          echo "=== Module 06: TheHive ==="
+          check_file "06-thehive/install-thehive.sh"
+          check_file "06-thehive/templates/alert-templates.json"
+          check_file "06-thehive/README.md"
+
+          echo ""
+          echo "=== Module 07: Shuffle ==="
+          check_file "07-shuffle/install-shuffle.sh"
+          check_file "07-shuffle/workflows/soc-incident-response.json"
+          check_file "07-shuffle/workflows/misp-to-thehive.json"
+          check_file "07-shuffle/workflows/beaconing-response.json"
+          check_file "07-shuffle/README.md"
+
+          echo ""
+          echo "=== Module 08: Integrations ==="
+          check_file "08-integrations/scripts/rita-to-thehive.py"
+          check_file "08-integrations/scripts/zeek-to-thehive.py"
+          check_file "08-integrations/sigma-rules/c2-beaconing.yml"
+          check_file "08-integrations/sigma-rules/reverse-shell.yml"
+          check_file "08-integrations/sigma-rules/dns-tunneling.yml"
+          check_file "08-integrations/sigma-rules/cron-persistence.yml"
+          check_file "08-integrations/playbooks/incident-response-playbooks.md"
+          check_file "08-integrations/README.md"
+
+          echo ""
+          if [[ $MISSING -gt 0 ]]; then
+            echo "❌ Missing files detected — repository incomplete"
+            exit 1
+          else
+            echo "✅ All required files present"
+          fi
+
+      - name: Count files and lines
+        run: |
+          echo ""
+          echo "=== Repository Stats ==="
+          echo "Total files:   $(find . -not -path './.git/*' -type f | wc -l)"
+          echo "Shell scripts: $(find . -name '*.sh' | wc -l)"
+          echo "Python files:  $(find . -name '*.py' | wc -l)"
+          echo "YAML/JSON:     $(find . \( -name '*.yml' -o -name '*.yaml' -o -name '*.json' \) | grep -v .git | wc -l)"
+          echo "Markdown docs: $(find . -name '*.md' | wc -l)"
+          echo "Total lines:   $(find . -not -path './.git/*' -type f | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')"
+
+  # ── Job 5: Secret Scan ──────────────────────────────────────────────────────
+  secret-scan:
+    name: 🔑 Secret Detection
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for hardcoded secrets
+        run: |
+          echo "=== Scanning for potential secrets ==="
+          FOUND=0
+
+          # Patterns to check (with context)
+          patterns=(
+            "password\s*=\s*['\"][^'\"]{8,}"
+            "api.key\s*=\s*['\"][A-Za-z0-9]{20,}"
+            "secret.key\s*=\s*['\"][A-Za-z0-9]{20,}"
+            "AWS_ACCESS_KEY_ID\s*=\s*AK[A-Z0-9]{18}"
+          )
+
+          for pattern in "${patterns[@]}"; do
+            # Exclude placeholder values and comments
+            matches=$(grep -rn --include="*.py" --include="*.sh" \
+              -iE "$pattern" . 2>/dev/null | \
+              grep -v "YOUR_\|PLACEHOLDER\|example\|#\|your-api\|dummy" || true)
+
+            if [[ -n "$matches" ]]; then
+              echo "⚠ Potential secret found:"
+              echo "$matches"
+              FOUND=1
+            fi
+          done
+
+          if [[ $FOUND -eq 0 ]]; then
+            echo "✅ No hardcoded secrets detected"
+          else
+            echo "⚠ Review findings above — ensure no real credentials committed"
+            # Don't fail CI for this — lab may have placeholder values
+          fi

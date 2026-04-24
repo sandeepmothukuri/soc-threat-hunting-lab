@@ -1,0 +1,76 @@
+{
+  "case_templates": [
+    {
+      "name": "SOC-Incident-Response",
+      "titlePrefix": "[IR]",
+      "description": "Standard incident response case for confirmed security incidents",
+      "severity": 2,
+      "tlp": 2,
+      "pap": 2,
+      "tags": ["incident-response", "soc-lab"],
+      "tasks": [
+        {
+          "order": 0,
+          "title": "1. Detection & Triage",
+          "group": "Detection",
+          "description": "## Initial Triage\n\n- [ ] Verify alert is a true positive\n- [ ] Determine affected systems (IPs, hostnames)\n- [ ] Identify affected user accounts\n- [ ] Determine initial access vector\n- [ ] Assess initial severity and business impact\n- [ ] Notify SOC lead if severity >= High\n\n**Tools:** Wazuh Dashboard, Zeek logs, Velociraptor"
+        },
+        {
+          "order": 1,
+          "title": "2. Containment",
+          "group": "Response",
+          "description": "## Containment Actions\n\n- [ ] Isolate affected host (Velociraptor quarantine or firewall block)\n- [ ] Block malicious IPs in pfSense/firewall\n- [ ] Reset compromised credentials\n- [ ] Block C2 domains in DNS/proxy\n- [ ] Preserve evidence before containment\n- [ ] Document all containment actions with timestamps\n\n**Commands:**\n```\n# Velociraptor host isolation (VQL):\nSELECT quarantine(message='Isolated by SOC') FROM scope()\n\n# pfSense block IP:\npfctl -t blocklist -T add MALICIOUS_IP\n```"
+        },
+        {
+          "order": 2,
+          "title": "3. Forensic Investigation",
+          "group": "Investigation",
+          "description": "## Deep Dive Investigation\n\n- [ ] Collect Velociraptor IR artifact bundle\n- [ ] Dump memory of suspicious processes\n- [ ] Extract and hash all artifacts\n- [ ] Reconstruct attack timeline\n- [ ] Identify lateral movement paths\n- [ ] Determine persistence mechanisms\n- [ ] Check MISP for known threat actor attribution\n- [ ] Submit unknown files to VirusTotal (via Cortex)\n\n**Velociraptor Collections:**\n- Linux.Collection.LiveResponse\n- Linux.Sys.BashHistory\n- Generic.Network.Netstat\n- SOCLab.HuntPersistence"
+        },
+        {
+          "order": 3,
+          "title": "4. Eradication",
+          "group": "Remediation",
+          "description": "## Remove Threat\n\n- [ ] Remove malware/backdoors\n- [ ] Delete persistence mechanisms (cron, systemd, startup)\n- [ ] Revoke attacker access (SSH keys, accounts)\n- [ ] Patch exploited vulnerability\n- [ ] Verify eradication with IOC scan\n- [ ] Document all changes made\n\n**Verify clean:**\n```bash\nosqueryi 'SELECT * FROM crontab WHERE command LIKE \"%/tmp/%\";'\nosqueryi 'SELECT * FROM authorized_keys;'\nosqueryi 'SELECT path FROM suid_bin WHERE path NOT IN (\"/usr/bin/sudo\",\"/bin/su\");'\n```"
+        },
+        {
+          "order": 4,
+          "title": "5. Recovery & Monitoring",
+          "group": "Recovery",
+          "description": "## Restore and Monitor\n\n- [ ] Restore from clean backup if needed\n- [ ] Re-enable isolated systems (staged)\n- [ ] Enable enhanced monitoring (OSQuery IR pack)\n- [ ] Monitor for re-compromise for 72h\n- [ ] Verify all IOCs still blocked\n- [ ] Run Velociraptor persistence hunt on all endpoints"
+        },
+        {
+          "order": 5,
+          "title": "6. Lessons Learned",
+          "group": "Post-Incident",
+          "description": "## Post-Incident Review\n\n- [ ] Document complete attack timeline\n- [ ] Root cause analysis\n- [ ] Detection gaps identified\n- [ ] Rules/signatures added/updated\n- [ ] MISP: add new IOCs from this incident\n- [ ] Update playbooks\n- [ ] Brief stakeholders\n- [ ] Calculate MTTD / MTTR"
+        }
+      ]
+    },
+    {
+      "name": "SOC-Threat-Hunt",
+      "titlePrefix": "[HUNT]",
+      "description": "Proactive threat hunting investigation",
+      "severity": 1,
+      "tlp": 2,
+      "tags": ["threat-hunting", "proactive"],
+      "tasks": [
+        {
+          "order": 0,
+          "title": "1. Define Hunt Hypothesis",
+          "description": "- [ ] State hypothesis (e.g., 'Attacker using DNS tunneling for exfil')\n- [ ] Identify data sources needed\n- [ ] Define success criteria\n- [ ] Set time scope"
+        },
+        {
+          "order": 1,
+          "title": "2. Collect & Analyze Data",
+          "description": "- [ ] Run RITA beaconing detection\n- [ ] Query OSQuery across all endpoints\n- [ ] Run Velociraptor hunt\n- [ ] Analyze Arkime PCAP\n- [ ] Cross-reference with MISP IOCs"
+        },
+        {
+          "order": 2,
+          "title": "3. Document Findings",
+          "description": "- [ ] Log all findings (positive and negative)\n- [ ] Create new IOCs in MISP if threats found\n- [ ] Update detection rules if gaps found\n- [ ] Close hunt with final report"
+        }
+      ]
+    }
+  ]
+}

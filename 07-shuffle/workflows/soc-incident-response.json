@@ -1,0 +1,99 @@
+{
+  "name": "SOC Incident Response - Auto",
+  "description": "Automatically respond to TheHive alerts: block IPs, isolate hosts, notify team",
+  "triggers": [
+    {
+      "name": "TheHive New Alert",
+      "type": "WEBHOOK",
+      "description": "Triggered when TheHive creates a new alert",
+      "id": "thehive-webhook-trigger"
+    }
+  ],
+  "actions": [
+    {
+      "id": "parse-alert",
+      "name": "Parse Alert Data",
+      "app_name": "Shuffle Tools",
+      "action": "parse_value",
+      "description": "Extract IP, severity, source from TheHive alert",
+      "parameters": {
+        "input": "$exec.body",
+        "keypath": "severity"
+      }
+    },
+    {
+      "id": "check-severity",
+      "name": "Check Severity Level",
+      "app_name": "Shuffle Tools",
+      "action": "filter",
+      "description": "Route: Critical=auto-respond, High=notify, Medium=log",
+      "parameters": {
+        "input": "$parse-alert.severity",
+        "filter": "3,4"
+      }
+    },
+    {
+      "id": "get-ip-observable",
+      "name": "Extract Malicious IP",
+      "app_name": "TheHive",
+      "action": "get_alert",
+      "description": "Get all observables from the alert",
+      "parameters": {
+        "alert_id": "$exec.body.id"
+      }
+    },
+    {
+      "id": "virustotal-check",
+      "name": "VirusTotal IP Lookup",
+      "app_name": "VirusTotal",
+      "action": "get_ip_report",
+      "description": "Check if IP is known malicious",
+      "parameters": {
+        "ip": "$get-ip-observable.data[0]"
+      }
+    },
+    {
+      "id": "create-thehive-case",
+      "name": "Promote Alert to Case",
+      "app_name": "TheHive",
+      "action": "create_case",
+      "description": "Create full IR case from alert",
+      "parameters": {
+        "title": "AUTO-IR: $exec.body.title",
+        "severity": "$exec.body.severity",
+        "description": "Auto-created by Shuffle SOAR\n\nOriginal alert: $exec.body.description\n\nVirusTotal result: $virustotal-check.data.attributes.last_analysis_stats",
+        "template": "SOC-Incident-Response",
+        "tags": ["auto-response", "shuffle-soar"]
+      }
+    },
+    {
+      "id": "notify-analyst",
+      "name": "Notify SOC Team",
+      "app_name": "Email",
+      "action": "send_email",
+      "description": "Email SOC team about critical incident",
+      "parameters": {
+        "to": "soc-team@company.com",
+        "subject": "[CRITICAL] Auto-IR triggered: $exec.body.title",
+        "body": "Shuffle SOAR has automatically responded to a critical alert.\n\nAlert: $exec.body.title\nSeverity: $exec.body.severity\nSource: $exec.body.source\n\nActions taken:\n- TheHive case created\n- Analyst assigned\n\nReview case: http://192.168.60.20:9000"
+      }
+    },
+    {
+      "id": "add-to-misp",
+      "name": "Add IOC to MISP",
+      "app_name": "MISP",
+      "action": "create_attribute",
+      "description": "Add confirmed malicious IP to MISP for sharing",
+      "parameters": {
+        "event_id": "1",
+        "type": "ip-dst",
+        "value": "$get-ip-observable.data[0]",
+        "comment": "Auto-added by Shuffle SOAR from TheHive case",
+        "to_ids": "1"
+      }
+    }
+  ],
+  "workflow_type": "INCIDENT_RESPONSE",
+  "tags": ["thehive", "misp", "auto-response", "soc-lab"],
+  "version": "1.0.0"
+}

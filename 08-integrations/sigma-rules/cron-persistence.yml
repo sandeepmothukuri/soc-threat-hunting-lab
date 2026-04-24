@@ -1,0 +1,29 @@
+title: Malicious Cron Job Persistence
+id: d4e5f6a7-b8c9-0123-defa-456789012345
+status: production
+description: |
+  Detects malicious persistence via cron jobs that execute suspicious commands.
+  Specifically looks for cron entries running from temp directories,
+  downloading scripts, or executing network-based shells.
+  MITRE ATT&CK: T1053.003 (Cron)
+author: SOC Lab
+date: 2024/01/01
+tags:
+  - attack.persistence
+  - attack.t1053.003
+logsource:
+  product: osquery
+  service: soc-detections
+detection:
+  cron_detection:
+    name: 'suspicious_cron'
+    action: 'added'
+  condition: cron_detection
+fields:
+  - command
+  - minute
+  - hour
+  - user
+falsepositives:
+  - Legitimate admin scripts that run from /tmp during deployment
+level: high

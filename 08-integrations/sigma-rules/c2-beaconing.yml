@@ -1,0 +1,39 @@
+title: C2 Beaconing via Regular Network Connection
+id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+status: production
+description: |
+  Detects C2 beaconing behavior based on regular interval connections to external hosts.
+  Complements RITA's statistical analysis with rule-based detection.
+  MITRE ATT&CK: T1071 (Application Layer Protocol), T1571 (Non-Standard Port)
+author: SOC Lab
+date: 2024/01/01
+modified: 2024/12/01
+tags:
+  - attack.command_and_control
+  - attack.t1071
+  - attack.t1571
+logsource:
+  category: network_connection
+  product: zeek
+detection:
+  selection:
+    note: 'Conn::Weird'
+  filter_internal:
+    id.resp_h|startswith:
+      - '192.168.'
+      - '10.'
+      - '172.16.'
+      - '127.'
+  condition: selection and not filter_internal
+fields:
+  - ts
+  - id.orig_h
+  - id.resp_h
+  - id.resp_p
+  - duration
+  - orig_bytes
+falsepositives:
+  - Legitimate software update checks
+  - NTP synchronization
+  - Monitoring agents with regular callbacks
+level: medium

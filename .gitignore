@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Secrets (never commit real credentials)
+*.creds
+.velociraptor-creds
+.misp-creds
+.shuffle-creds
+
+# Logs (local only)
+*.log
+/var/log/
+
+# VirtualBox
+*.vbox
+*.vdi
+*.vmdk
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Lab runtime data (local only)
+/tmp/
+pcap/
+*.pcap
+*.cap
