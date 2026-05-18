@@ -388,7 +388,7 @@ MIT — Free to use, modify, and share. Built for learning. Do not use against s
 
 - Website: [cybertechnology.in](https://cybertechnology.in)
 - GitHub: [@sandeepmothukuri](https://github.com/sandeepmothukuri)
-- LinkedIn: [sandeepmothukuris](https://www.linkedin.com/in/sandeepmothukuris)
+- LinkedIn: [sandeepmothukuri](https://www.linkedin.com/in/sandeepmothukuri)
 
 ---
 
