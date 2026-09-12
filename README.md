@@ -140,4 +140,8 @@ This repository is maintained as a practical security engineering environment fo
 
 ---
 
+### 📄 License
+
+MIT License. See [`LICENSE`](LICENSE).
+
 **Author portfolio:** [github.com/sandeepmothukuri](https://github.com/sandeepmothukuri)
