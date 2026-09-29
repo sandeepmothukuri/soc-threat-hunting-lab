@@ -1,0 +1,12 @@
+[Unit]
+Description=SOC Lab - OSQuery Differential Results to TheHive Forwarder
+After=network.target osqueryd.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/soc-threat-hunting-lab/08-integrations
+Environment="THEHIVE_URL=http://192.168.60.20:9000"
+Environment="THEHIVE_API_KEY=YOUR_THEHIVE_API_KEY"
+Environment="OSQUERY_LOG=/var/log/osquery/osqueryd.results.log"
+ExecStart=/usr/bin/python3 /opt/soc-threat-hunting-lab/08-integrations/scripts/osquery-to-thehive.py

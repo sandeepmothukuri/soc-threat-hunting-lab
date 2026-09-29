@@ -43,6 +43,14 @@ Access: `https://192.168.60.10`
 
 ---
 
+## MISP Threat Intelligence Dashboard
+
+![MISP Dashboard](../docs/screenshots/misp-dashboard.png)
+
+*Figure: MISP Threat Intelligence Dashboard (`https://192.168.60.10`) tracking correlated threat events, active open-source intelligence feeds, indicator counts, and galaxy taxonomy tags across global threat campaigns.*
+
+---
+
 ## Step 1 — Enable Threat Feeds
 
 In MISP UI → Sync Actions → Feeds:

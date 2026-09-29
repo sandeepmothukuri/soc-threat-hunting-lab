@@ -1,0 +1,17 @@
+[Unit]
+Description=SOC Lab - Zeek Network Notices to TheHive Forwarder
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/soc-threat-hunting-lab/08-integrations
+Environment="THEHIVE_URL=http://192.168.60.20:9000"
+Environment="THEHIVE_KEY=YOUR_THEHIVE_API_KEY"
+Environment="ZEEK_LOG_DIR=/opt/zeek/logs/current"
+ExecStart=/usr/bin/python3 /opt/soc-threat-hunting-lab/08-integrations/scripts/zeek-to-thehive.py --watch
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

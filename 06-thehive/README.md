@@ -40,6 +40,20 @@ Default: `admin@thehive.local` / `secret` (change immediately!)
 
 ---
 
+## Security Alert Triage & Incident Case Management
+
+### Alert Triage Queue
+![TheHive Alerts Triage](../docs/screenshots/thehive-alerts.png)
+
+*Figure: TheHive 5 Alert Queue displaying incoming real-time security detections from Zeek, RITA, Velociraptor, and OSQuery. Analysts can review severity, tags, observables, and escalate qualifying alerts into formal cases with one click.*
+
+### Active Incident Cases & Task Workflows
+![TheHive Case Management](../docs/screenshots/thehive-cases.png)
+
+*Figure: TheHive 5 Case Management dashboard showing active security incident investigations, task progress, assigned analysts, metrics, and forensic timelines.*
+
+---
+
 ## Step 1 — Initial Setup
 
 ```

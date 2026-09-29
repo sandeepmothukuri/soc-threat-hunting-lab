@@ -26,6 +26,14 @@ Login: admin / (shown at end of install)
 
 ---
 
+## Arkime Web Interface & Session Inspection
+
+![Arkime Session View](../docs/screenshots/arkime-session-view.png)
+
+*Figure: Arkime Web Console (`http://192.168.50.20:8005`) indexing live network traffic sessions across the target and detection VLANs. Analysts can immediately pivot on IP addresses, port distributions, protocol trees, and view full packet payload reassembly.*
+
+---
+
 ## Step 2 — Key Arkime Features
 
 ### Session Search

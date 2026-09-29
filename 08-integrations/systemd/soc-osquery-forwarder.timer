@@ -1,0 +1,10 @@
+[Unit]
+Description=SOC Lab - Run OSQuery to TheHive Forwarder Every 60s
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=60s
+Unit=soc-osquery-forwarder.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,18 @@
+[Unit]
+Description=SOC Lab - MISP Threat Intel IOC Synchronization Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/soc-threat-hunting-lab/05-misp
+Environment="MISP_URL=https://192.168.60.10"
+Environment="MISP_KEY=YOUR_MISP_API_KEY"
+Environment="THEHIVE_URL=http://192.168.60.20:9000"
+Environment="THEHIVE_KEY=YOUR_THEHIVE_API_KEY"
+ExecStart=/usr/bin/python3 /opt/soc-threat-hunting-lab/05-misp/scripts/ioc-sync.py --mode watch --interval 1800
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

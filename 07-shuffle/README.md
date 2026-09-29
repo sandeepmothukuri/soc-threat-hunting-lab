@@ -32,6 +32,14 @@ Access: `http://192.168.60.30:3001`
 
 ---
 
+## Shuffle SOAR Visual Workflow Engine
+
+![Shuffle Automation Workflow](../docs/screenshots/shuffle-workflow.png)
+
+*Figure: Shuffle SOAR workflow builder (`http://192.168.60.30:3001`). Webhooks received from TheHive trigger conditional branching, automated IOC reputation verification, firewall blocking via iptables/pfSense, host containment via Velociraptor VQL, and instant analyst alerts.*
+
+---
+
 ## Step 1 — Connect Your Tools
 
 In Shuffle UI → Apps → Configure:
