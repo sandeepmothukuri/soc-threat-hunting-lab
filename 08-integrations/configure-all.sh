@@ -17,7 +17,15 @@ MISP_API_KEY="${MISP_API_KEY:-}"
 VIRUSTOTAL_API_KEY="${VIRUSTOTAL_API_KEY:-}"
 ABUSEIPDB_API_KEY="${ABUSEIPDB_API_KEY:-}"
 
-INTEGRATION_DIR="$(dirname "$(realpath "$0")")/08-integrations/scripts"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -d "$SCRIPT_DIR/scripts" ]]; then
+  REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+  INTEGRATION_DIR="$SCRIPT_DIR/scripts"
+else
+  REPO_DIR="$SCRIPT_DIR"
+  INTEGRATION_DIR="$REPO_DIR/08-integrations/scripts"
+fi
+WORKFLOW_DIR="$REPO_DIR/07-shuffle/workflows"
 
 # ── Helper functions ──────────────────────────────────────────────────────────
 log()     { echo "[$(date +%H:%M:%S)] $*"; }
@@ -164,7 +172,6 @@ fi
 log ""
 log "=== Step 6: Shuffle Workflow Import ==="
 
-WORKFLOW_DIR="$(dirname "$(realpath "$0")")/07-shuffle/workflows"
 if [[ -d "$WORKFLOW_DIR" ]] && require_api_key "Shuffle" "${SHUFFLE_API_KEY:-}"; then
   for wf in "$WORKFLOW_DIR"/*.json; do
     wf_name=$(basename "$wf" .json)

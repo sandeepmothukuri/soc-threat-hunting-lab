@@ -36,6 +36,19 @@ This lab simulates real-world adversary techniques across network and endpoint l
   - [Scenario 4: Reverse Shell Execution & Persistence Hunting](#scenario-4--reverse-shell-execution--persistence-hunting-t1059004-t1053003-t1543)
   - [Scenario 5: Threat Intelligence Correlation & Active Ingestion](#scenario-5--threat-intelligence-correlation--active-ingestion-t1190-t1566)
   - [Scenario 6: Automated Incident Response & Host Containment](#scenario-6--automated-incident-response--host-containment-t1041-t1021)
+- [Technical Deep-Dive: Detection Mechanics & Core Security Theory](#-technical-deep-dive-detection-mechanics--core-security-theory)
+  - [1. Network Security Monitoring & Zeek Protocol Analysis Engine](#1-network-security-monitoring--zeek-protocol-analysis-engine)
+  - [2. RITA Mathematical Modeling for C2 Beaconing Detection](#2-rita-mathematical-modeling-for-c2-beaconing-detection)
+  - [3. Arkime Full Packet Capture & Session Reconstruction Mechanics](#3-arkime-full-packet-capture--session-reconstruction-mechanics)
+  - [4. Velociraptor VQL Architecture & Live Digital Forensics](#4-velociraptor-vql-architecture--live-digital-forensics)
+  - [5. OSQuery Schema Architecture & File Integrity Monitoring (FIM)](#5-osquery-schema-architecture--file-integrity-monitoring-fim)
+  - [6. MISP Threat Intelligence Lifecycle & Automated Distribution](#6-misp-threat-intelligence-lifecycle--automated-distribution)
+  - [7. TheHive 5 & Cortex Orchestrated Investigation Framework](#7-thehive-5--cortex-orchestrated-investigation-framework)
+  - [8. Shuffle SOAR Playbook Design & Automated Incident Remediation](#8-shuffle-soar-playbook-design--automated-incident-remediation)
+- [SOC Analyst Tiered Standard Operating Procedures (SOPs)](#-soc-analyst-tiered-standard-operating-procedures-sops)
+  - [Tier 1: Alert Triage & Initial Validation SOP](#tier-1-alert-triage--initial-validation-sop)
+  - [Tier 2: Deep Forensic Investigation & Scope Assessment SOP](#tier-2-deep-forensic-investigation--scope-assessment-sop)
+  - [Tier 3: Proactive Threat Hunting & Detection Engineering SOP](#tier-3-proactive-threat-hunting--detection-engineering-sop)
 - [Detection Engineering: Sigma Rules & VQL Artifacts](#-detection-engineering-sigma-rules--vql-artifacts)
 - [MITRE ATT&CK Matrix Mapping](#-mitre-attck-matrix-mapping)
 - [Service Port Reference & Operational Commands](#-service-port-reference--operational-commands)
@@ -645,6 +658,216 @@ When TheHive receives an alert with tags `Severity:Critical` and `Detection:Reve
      Attacker IP 192.168.20.10 added to firewall blocklist.
      Analyst assigned: analyst1@soc-lab.local
      ```
+
+---
+
+## 🔬 Technical Deep-Dive: Detection Mechanics & Core Security Theory
+
+### 1. Network Security Monitoring & Zeek Protocol Analysis Engine
+
+Traditional signature-based Network Intrusion Detection Systems (NIDS) like Snort or Suricata evaluate packets against static regular expressions. In contrast, **Zeek (formerly Bro)** operates as an event-driven protocol interpreter that turns raw packet streams into structured semantic state.
+
+```
+       Raw Packets (eth1 TAP / SPAN)
+                    │
+                    ▼
+     ┌─────────────────────────────┐
+     │   Event Engine Core (C++)   │
+     │  - IP Defragmentation       │
+     │  - TCP Stream Reassembly    │
+     │  - Dynamic Protocol Detect  │
+     └──────────────┬──────────────┘
+                    │ Protocol Events (e.g. http_request, dns_request)
+                    ▼
+     ┌─────────────────────────────┐
+     │   Zeek Policy Script Engine │
+     │  - State Machine Tracking   │
+     │  - JA3/JA3S Fingerprinting  │
+     │  - Notice Generation Rules  │
+     └──────────────┬──────────────┘
+                    │
+        Structured JSON Log Streams
+   (conn.log, dns.log, ssl.log, http.log, notice.log)
+```
+
+- **Dynamic Protocol Detection (DPD):** Zeek does not rely solely on standard destination ports (e.g., port 80 for HTTP). If an adversary establishes a Metasploit HTTP payload over port 4444 or 8443, Zeek identifies the protocol handshake dynamically and triggers the HTTP analyzer.
+- **JA3/JA3S Fingerprinting:** When an endpoint initiates an encrypted TLS connection, the client sends a `ClientHello` packet containing supported cipher suites, TLS extensions, and elliptic curve formats. These parameters are combined into an ordered string and MD5 hashed into a **JA3 fingerprint**:
+  $$\text{JA3} = \text{MD5}(\text{SSLVersion,Ciphers,Extensions,EllipticCurves,EllipticCurvePointFormats})$$
+  Because malware developers frequently use specific cryptographic libraries (such as custom Go binaries, WinINet, or Cobalt Strike defaults), the JA3 fingerprint identifies the malicious tool regardless of domain rotation, IP infrastructure changes, or full end-to-end payload encryption.
+
+---
+
+### 2. RITA Mathematical Modeling for C2 Beaconing Detection
+
+Adversaries deploying Command and Control (C2) frameworks (e.g., Cobalt Strike, Sliver, Mythic) configure implants to call back to external listener nodes at predetermined intervals. Real Intelligence Threat Analytics (**RITA**) imports Zeek `conn.log` streams and computes statistical metrics across every client-server IP pair over time:
+
+1. **Interval Delta Regularity:** Let $t_1, t_2, \dots, t_n$ be connection timestamps between host $A$ and host $B$. The connection delta is defined as $\Delta t_i = t_{i+1} - t_i$. RITA evaluates the probability density function of $\Delta t$. In human-driven browsing, intervals follow a Poisson-like or highly random distribution with high variance. In automated beacons, interval deltas concentrate tightly around the configured sleep duration.
+2. **Skewness & Kurtosis Scoring:**
+   - **Skewness:** Measures the asymmetry of delta intervals around the mean. Beacons with consistent intervals exhibit near-zero skewness.
+   - **Kurtosis:** Measures the "tailedness" of the distribution. Beacons exhibit high positive kurtosis (leptokurtic peaks) around the interval frequency.
+3. **Data Uniformity (Byte Sizing):** Automated heartbeats carry identical or nearly identical request and response payloads ($|b_{\text{orig}}|$ and $|b_{\text{resp}}|$). RITA scores byte-count variance alongside timestamp variance:
+   $$\text{BeaconScore} = w_1 \cdot S_{\text{time}} + w_2 \cdot S_{\text{freq}} + w_3 \cdot S_{\text{bytes}} + w_4 \cdot S_{\text{bimodal}}$$
+   A composite score approaching $1.0$ indicates deterministic machine execution, allowing SOC analysts to hunt stealthy implants even when adversaries configure jitter (e.g., sleep $60\text{s} \pm 20\%$).
+
+---
+
+### 3. Arkime Full Packet Capture & Session Reconstruction Mechanics
+
+While Zeek generates lightweight transaction metadata, Arkime preserves raw packet frames to provide ground truth for deep forensic analysis:
+
+- **Ring-Buffer Ingestion:** Arkime uses `AF_PACKET` with memory-mapped buffers (`PACKET_MMAP`) to capture gigabits of network traffic without kernel drop overhead.
+- **Session Profile Indexing:** Rather than indexing individual packets into Elasticsearch (which would cause index explosion), Arkime groups packets into bi-directional **TCP/UDP sessions**. Metadata, SPI (Session Profile Information), protocol decoders, and byte histograms are indexed, while the raw payloads are written sequentially to append-only `.pcap` files on disk.
+- **Payload De-obfuscation:** Analysts can reconstruct full application-layer conversations in ASCII or hexadecimal. For example, if an attacker uploads a webshell via an HTTP `POST` request, Arkime reconstructs the multi-part form data, allowing immediate extraction of the uploaded file hash without requiring endpoint file recovery.
+
+---
+
+### 4. Velociraptor VQL Architecture & Live Digital Forensics
+
+Velociraptor departs from traditional endpoint agents by functioning as an extensible, query-driven forensic operating system based on **VQL (Velociraptor Query Language)**:
+
+```
+  SOC Analyst (Web UI / API)
+              │
+              │ Dispatches VQL Artifact
+              ▼
+   Velociraptor Central Server
+              │
+              │ Cryptographic gRPC Polling Stream
+              ▼
+    Velociraptor Endpoint Client
+    ┌───────────────────────────┐
+    │  VQL Execution Engine     │
+    │  - Memory Process Dump    │
+    │  - YARA Scanning Plugin   │
+    │  - NTFS / Ext4 Parser     │
+    │  - Network Socket Filter  │
+    └───────────────────────────┘
+```
+
+- **Declarative Endpoint State:** Instead of pre-baking rigid detection logic into the agent binary, queries are defined declaratively in YAML artifacts:
+  ```sql
+  SELECT Pid, Name, CommandLine, Exe,
+         hash(path=Exe) AS Hashes
+  FROM pslist()
+  WHERE CommandLine =~ "cmd.exe|powershell.exe|bash"
+  ```
+- **Live Memory Forensics:** Velociraptor can scan process memory using YARA signatures, dump memory pages to disk, inspect loaded dynamic libraries (`/proc/$PID/maps` or Windows PEB), and carve unallocated space without taking the endpoint offline.
+
+---
+
+### 5. OSQuery Schema Architecture & File Integrity Monitoring (FIM)
+
+OSQuery exposes an operating system as a relational database using a modular SQLite virtualization engine:
+
+- **Virtual Tables:** Querying `SELECT * FROM processes` does not query an on-disk SQLite table; rather, SQLite's virtual table interface queries the underlying operating system APIs (`/proc` on Linux, Task Manager APIs on Windows) in memory on-demand.
+- **Differential Result Logging:** OSQuery's background daemon `osqueryd` executes scheduled queries and compares results against its local **RocksDB** key-value storage. It produces JSON log records tagged with:
+  - `"action": "added"`: A new state entity has appeared (e.g., a new listening port, newly created SUID binary, or new user).
+  - `"action": "removed"`: An entity has terminated or been deleted.
+- **File Integrity Monitoring (FIM):** By leveraging Linux `inotify` or Windows ReadDirectoryChangesW subsystems, OSQuery detects write, move, and permission changes across sensitive directories (`/etc/`, `/bin/`, `/usr/bin/`, `/var/spool/cron/`) in sub-second timeframes.
+
+---
+
+### 6. MISP Threat Intelligence Lifecycle & Automated Distribution
+
+Threat intelligence is only actionable when operationalized at machine speed. In this lab:
+
+```
+    External OSINT Feeds (URLhaus, Feodo, CIRCL)
+                       │
+                       ▼
+    MISP Platform (Indicator Correlation Engine)
+                       │
+                       │ 30-Minute Ingestion Daemon (ioc-sync.py)
+                       ▼
+       ┌───────────────┴───────────────┐
+       │                               │
+       ▼                               ▼
+  OSQuery Pack                   TheHive 5 Feed
+(/etc/osquery/packs/misp-iocs)   (Observable Cross-Match)
+```
+
+- **Taxonomies & Galaxies:** Every indicator ingested is tagged with standardized classification frameworks including Admiralty scale reliability, MITRE ATT&CK Enterprise TTPs, and Threat Actor attributions.
+- **Zero-Latency Ingestion:** The background daemon `ioc-sync.py` pulls active indicators and transforms them into local OSQuery query configurations:
+  ```sql
+  SELECT p.name, p.pid, n.remote_address
+  FROM process_open_sockets n JOIN processes p ON n.pid = p.pid
+  WHERE n.remote_address IN (SELECT value FROM misp_malicious_ips);
+  ```
+  If any endpoint initiates a connection to an active C2 node cataloged in MISP, an alert fires instantly across both endpoint and network visibility planes.
+
+---
+
+### 7. TheHive 5 & Cortex Orchestrated Investigation Framework
+
+TheHive acts as the central workbench and incident repository for the SOC:
+
+- **Data Model:** Built upon JanusGraph and Apache Cassandra, TheHive stores security alerts, cases, observables, and forensic artifacts in a distributed graph database. This preserves relationships between diverse entities (e.g., matching a domain across three unrelated cases investigated by different analysts).
+- **Observable Enrichment Pipeline:** When an alert is promoted to a case, observables (IP addresses, domain names, file hashes, email headers) are submitted to **Cortex** via REST API. Cortex executes independent modular Docker containers (Analyzers) that query external reputation sources (VirusTotal, AbuseIPDB, Shodan) and append cryptographic verdicts directly to the case observable table.
+
+---
+
+### 8. Shuffle SOAR Playbook Design & Automated Incident Remediation
+
+Shuffle provides the decision-and-action layer that connects analytical detection to defensive containment:
+
+- **Event-Driven Webhook Architecture:** TheHive emits JSON events upon state triggers (e.g., case creation, tag addition).
+- **Execution Workers:** Shuffle workers parse JSON trees, evaluate conditional logic gates (e.g., `if observable.reputation == "malicious" && case.severity >= 3`), and dispatch containment actions over authenticated APIs.
+- **Automated Host Quarantine:** Rather than requiring manual firewall configuration by a junior analyst at 3 AM, Shuffle executes an authenticated VQL call to the Velociraptor server:
+  ```sql
+  LET _ = linux_firewall_isolate(action="isolate")
+  ```
+  The endpoint drops all inbound and outbound network connectivity except for the secure Velociraptor management channel, neutralizing lateral movement and data exfiltration in seconds.
+
+---
+
+## 📋 SOC Analyst Tiered Standard Operating Procedures (SOPs)
+
+### Tier 1: Alert Triage & Initial Validation SOP
+
+```
+[Incoming Alert in TheHive Queue]
+         │
+         ▼
+ 1. Check Alert Source & Signature
+    - Zeek Notice / RITA Beacon / OSQuery Socket
+         │
+         ▼
+ 2. Verify Observables against Cortex / MISP
+    - Is the IP/Domain flagged in threat feeds?
+    - Are multiple hosts communicating with the target?
+         │
+         ├─────────────────────────────────────────┐
+         │ False Positive                          │ Confirmed True Positive
+         ▼                                         ▼
+ 3. Dismiss Alert                          4. Escalate to Incident Case
+    - Document rationale in notes             - Apply Incident Response Template
+    - Tag as FP:BenignNoise                   - Assign severity (Medium / High / Critical)
+    - Close alert in queue                    - Hand off to Tier 2 Analyst
+```
+
+### Tier 2: Deep Forensic Investigation & Scope Assessment SOP
+
+1. **PCAP Pivot in Arkime:**
+   - Filter by source IP, destination IP, and attack timestamp in Arkime (`http://192.168.50.20:8005`).
+   - Extract raw application stream; inspect HTTP request methods, POST body payloads, and TLS SNI strings.
+   - If executable binaries or script files were downloaded over the wire, export the session PCAP and calculate SHA256 hashes.
+2. **Endpoint Triage via Velociraptor:**
+   - Open Velociraptor console (`https://192.168.50.30:8889`) and target the compromised host.
+   - Run process list artifact (`Generic.Client.Info`) and inspect process tree lineage (PPID to PID).
+   - Execute persistence hunt (`SOCLab.HuntPersistence.yaml`) to inspect crontabs, systemd service units, and authorized SSH keys.
+3. **Containment Execution:**
+   - If an active C2 session or reverse shell is observed, trigger network isolation through Shuffle or directly in Velociraptor.
+
+### Tier 3: Proactive Threat Hunting & Detection Engineering SOP
+
+1. **Hypothesis Formulation:** Develop threat hunting hypotheses based on emerging intelligence reports (e.g., novel living-off-the-land techniques or evasive DNS tunneling).
+2. **Fleet-Wide Hunting:**
+   - Formulate custom VQL hunts in Velociraptor across all registered endpoints.
+   - Run historical aggregation queries in Zeek logs using `zeek-cut` and RITA statistical tools.
+3. **Detection Rule Deployment (Detection-as-Code):**
+   - Author a new Sigma rule capturing the identified adversary tradecraft.
+   - Deploy matching detection logic into OSQuery query packs (`04-osquery/packs/soc-detections.conf`) and custom Zeek scripts (`/opt/zeek/share/zeek/site/soc-detection.zeek`).
+   - Submit identified indicator IOCs into MISP to safeguard the entire infrastructure.
 
 ---
 

@@ -16,7 +16,7 @@ error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 ARKIME_VERSION="4.3.1"
 CAPTURE_IFACE="${CAPTURE_IFACE:-eth1}"
 PCAP_DIR="${PCAP_DIR:-/data/pcap}"
-ARKIME_PASS="${ARKIME_PASS:-$(openssl rand -base64 12 | tr -d '/+=')}}"
+ARKIME_PASS="${ARKIME_PASS:-$(openssl rand -base64 12 | tr -d '/+=')}"
 
 step "1/5 — Prerequisites"
 export DEBIAN_FRONTEND=noninteractive
