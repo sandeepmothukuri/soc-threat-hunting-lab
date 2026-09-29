@@ -16,7 +16,8 @@ This lab simulates real-world adversary techniques across network and endpoint l
 - [Lab Architecture & Multi-VLAN Topology](#-lab-architecture--multi-vlan-topology)
 - [Tools Overview & Sizing Matrix](#-tools-overview--sizing-matrix)
 - [Hardware Prerequisites](#-hardware-prerequisites)
-- [Step-by-Step Installation Guide](#-step-by-step-installation-guide)
+- [⚡ One-Command Automated Build ("Build All Together")](#-one-command-automated-build-build-all-together)
+- [Step-by-Step Manual Installation Guide](#-step-by-step-manual-installation-guide)
   - [Phase 1: Host Preparation & Network Setup](#phase-1--host-preparation--network-setup)
   - [Phase 2: Base VM Deployment & Static IP Allocation](#phase-2--base-vm-deployment--static-ip-allocation)
   - [Phase 3: Network Tap & Promiscuous Mode Setup](#phase-3--network-tap--promiscuous-mode-setup)
@@ -140,9 +141,81 @@ Every component in this lab is selected to provide enterprise-grade capabilities
 
 ---
 
-## 🛠️ Step-by-Step Installation Guide
+## ⚡ One-Command Automated Build ("Build All Together")
 
-Follow these steps in sequential order. Each step builds upon the previous configuration.
+If you want to spin up the complete 8-VM lab automatically without manual ISO installations, use the included multi-machine **Vagrantfile** and master orchestration scripts.
+
+### Option A — Complete Lab via Vagrant (Cross-Platform)
+
+Requires [VirtualBox 7.x](https://www.virtualbox.org/wiki/Downloads) and [Vagrant](https://www.vagrantup.com/downloads) installed on your host.
+
+```bash
+# Clone the repository
+git clone https://github.com/sandeepmothukuri/soc-threat-hunting-lab.git
+cd soc-threat-hunting-lab
+
+# 1. Bring up all 8 VMs together (automated download, networking, tap setup & provisioning)
+vagrant up
+
+# 2. Run diagnostic health check once deployment completes
+./scripts/health-check.sh
+```
+
+#### Running Functional Sub-Profiles (For Hosts with 16GB – 24GB RAM)
+
+If your host has limited RAM, deploy only the machines needed for specific hunting exercises:
+
+```bash
+# Profile 1: Network Sensor Lab (Zeek, RITA, Arkime, Target, Kali) ~18GB RAM
+vagrant up zeek-rita arkime ubuntu-target kali
+
+# Profile 2: Endpoint DFIR Lab (Velociraptor Server & Target Agent) ~10GB RAM
+vagrant up velociraptor ubuntu-target kali
+
+# Profile 3: Intel, Case Management & SOAR Lab (MISP, TheHive, Shuffle) ~16GB RAM
+vagrant up misp thehive shuffle
+```
+
+---
+
+### Option B — Windows Host Native Orchestration (PowerShell)
+
+For Windows analysts running VirtualBox natively:
+
+```powershell
+# Open PowerShell as Administrator in the repository folder:
+cd "C:\Users\sande\Documents\AntiGravity\new repo\soc-threat-hunting-lab"
+
+# Step 1: Check prerequisites and automatically configure the 4 host-only networks
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-host.ps1
+
+# Step 2: Build all VMs together using the master Windows orchestrator
+powershell -ExecutionPolicy Bypass -File .\scripts\build-all.ps1 -Profile all
+
+# Step 3: Run Windows native port & API health checks
+powershell -ExecutionPolicy Bypass -File .\scripts\health-check.ps1
+```
+
+---
+
+### Option C — Linux / macOS Host Orchestration (Bash)
+
+```bash
+# Step 1: Create host-only networks and install host dependencies
+sudo ./scripts/setup-host.sh
+
+# Step 2: Run master orchestrator
+./scripts/build-all.sh --vagrant
+
+# Step 3: Run health check
+./scripts/health-check.sh
+```
+
+---
+
+## 🛠️ Step-by-Step Manual Installation Guide
+
+If you prefer building each VM manually from base ISOs (or deploying on bare-metal hypervisors like Proxmox / ESXi), follow the sequential phases below:
 
 ### Phase 1 — Host Preparation & Network Setup
 
