@@ -52,6 +52,11 @@ Default: `admin@thehive.local` / `secret` (change immediately!)
 
 *Figure: TheHive 5 Case Management dashboard showing active security incident investigations, task progress, assigned analysts, metrics, and forensic timelines.*
 
+### Cortex Observable Enrichment Analyzers
+![Cortex Analyzers](../docs/screenshots/cortex-analyzers.png)
+
+*Figure: Cortex 3 Analysis Engine (`http://192.168.60.20:9001`) displaying automated enrichment jobs (VirusTotal, AbuseIPDB, MISP) evaluating suspicious observables associated with TheHive incident cases.*
+
 ---
 
 ## Step 1 — Initial Setup

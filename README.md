@@ -25,11 +25,15 @@ This lab simulates real-world adversary techniques across network and endpoint l
   - [Phase 5: Cross-Tool Integration & Systemd Daemons](#phase-5--cross-tool-integration--systemd-daemons)
   - [Phase 6: Lab Health & Connectivity Verification](#phase-6--lab-health--connectivity-verification)
 - [Security Console Interfaces & Telemetry Walkthrough](#-security-console-interfaces--telemetry-walkthrough)
-  - [Arkime Full Packet Capture & Session Inspection](#1-arkime-full-packet-capture--session-inspection)
-  - [MISP Threat Intelligence Dashboard & Indicator Sync](#2-misp-threat-intelligence-dashboard--indicator-sync)
-  - [TheHive 5 Real-Time Security Alert Triage](#3-thehive-5-real-time-security-alert-triage)
-  - [TheHive 5 Incident Case Management & Investigation](#4-thehive-5-incident-case-management--investigation)
-  - [Shuffle SOAR Visual Incident Response Automation](#5-shuffle-soar-visual-incident-response-automation)
+  - [1. Arkime Full Packet Capture & Session Inspection](#1-arkime-full-packet-capture--session-inspection)
+  - [2. RITA C2 Beaconing & Statistical Analysis Dashboard](#2-rita-c2-beaconing--statistical-analysis-dashboard)
+  - [3. Velociraptor Live EDR & Threat Hunting Console](#3-velociraptor-live-edr--threat-hunting-console)
+  - [4. OSQuery Interactive Threat Hunting Shell](#4-osquery-interactive-threat-hunting-shell-osqueryi)
+  - [5. MISP Threat Intelligence Dashboard & Indicator Sync](#5-misp-threat-intelligence-dashboard--indicator-sync)
+  - [6. Cortex 3 Observable Enrichment & Analyzers Engine](#6-cortex-3-observable-enrichment--analyzers-engine)
+  - [7. TheHive 5 Real-Time Security Alert Triage](#7-thehive-5-real-time-security-alert-triage)
+  - [8. TheHive 5 Incident Case Management & Investigation](#8-thehive-5-incident-case-management--investigation)
+  - [9. Shuffle SOAR Visual Incident Response Automation](#9-shuffle-soar-visual-incident-response-automation)
 - [Demonstrated Attack & Threat Hunting Scenarios](#-demonstrated-attack--threat-hunting-scenarios)
   - [Scenario 1: Network Reconnaissance & Port Scanning](#scenario-1--network-reconnaissance--port-scanning-t1046)
   - [Scenario 2: Command & Control (C2) Beaconing Detection](#scenario-2--command--control-c2-beaconing-detection-t1071-t1571)
@@ -481,58 +485,109 @@ Arkime provides high-speed full packet capture indexing and protocol dissection.
 
 ---
 
-### 2. MISP Threat Intelligence Dashboard & Indicator Sync
+### 2. RITA C2 Beaconing & Statistical Analysis Dashboard
 
-MISP serves as the central intelligence repository. It ingests automated threat feeds from external OSINT providers (abuse.ch, URLhaus, ThreatFox, CIRCL), stores custom internal indicators from active investigations, and correlates observables.
+Real Intelligence Threat Analytics (**RITA**) processes Zeek `conn.log` datasets to identify persistent, automated C2 callback channels hiding beneath legitimate background network traffic.
+
+![RITA Beaconing Analysis](docs/screenshots/rita-beaconing-analysis.png)
+
+**Analyst Workflow in RITA:**
+- **Beacon Score Matrix:** Highlights source/destination IP pairs with high regularity scores ($>0.70$). Implants scoring $0.968$ indicate deterministic automation.
+- **Delta Interval Distribution:** Gauges timestamp delta variance, skewness, and kurtosis to identify beacon sleep intervals (e.g., exactly 30s heartbeats).
+- **Exploded DNS Cardinality:** Detects DNS tunneling utilities (such as `iodine` or `dnscat2`) querying hundreds of unique high-entropy subdomains.
+
+---
+
+### 3. Velociraptor Live EDR & Threat Hunting Console
+
+Velociraptor provides on-demand live endpoint forensics and fleet-wide threat hunting using declarative VQL (Velociraptor Query Language) artifacts.
+
+![Velociraptor Hunting Console](docs/screenshots/velociraptor-hunting.png)
+
+**Analyst Workflow in Velociraptor:**
+- **Hunt Dispatch:** Dispatches custom hunts (`SOCLab.HuntPersistence`) across the endpoint fleet in seconds.
+- **Artifact Inspection:** Pinpoints rogue crontabs (`*/5 * * * * bash -i ...`), unauthorized systemd unit files (`backdoor.service`), and rogue SUID root binaries in `/tmp`.
+- **Live Remediation:** Allows the analyst to isolate the compromised host directly via VQL firewall rules while maintaining the encrypted management channel.
+
+---
+
+### 4. OSQuery Interactive Threat Hunting Shell (`osqueryi`)
+
+OSQuery models the underlying host operating system as a relational database, enabling interactive SQL queries against processes, listening sockets, kernel modules, and file integrity tables.
+
+![OSQuery Threat Detection](docs/screenshots/osquery-threat-detection.png)
+
+**Analyst Workflow in OSQuery:**
+- **Socket Correlation:** Running `SELECT p.pid, p.name, p.cmdline, n.remote_address FROM process_open_sockets n JOIN processes p ON n.pid = p.pid` instantly reveals the active bash reverse shell connected to `192.168.20.10:4444`.
+- **Privilege Escalation Audit:** Queries against `suid_bin` identify newly dropped SUID root binaries staged in `/tmp/` or `/dev/shm/`.
+- **Continuous Logging:** `osqueryd` writes differential change events (`added`/`removed`) directly to `/var/log/osquery/osqueryd.results.log` for automated alert ingestion.
+
+---
+
+### 5. MISP Threat Intelligence Dashboard & Indicator Sync
+
+MISP serves as the central threat intelligence platform, ingesting automated community feeds and correlating global threat actor indicators against internal lab observables.
 
 ![MISP Dashboard](docs/screenshots/misp-dashboard.png)
 
 **Analyst Workflow in MISP:**
-- **Event Aggregation:** Ingests thousands of verified malicious IPs, file hashes, C2 domains, and phishing URLs.
-- **Taxonomy & Galaxy Mapping:** Events are automatically tagged with MITRE ATT&CK techniques, threat actor attributions (e.g., APT29, Lazarus), and malware families.
-- **Automated Distribution:** The background script `ioc-sync.py` queries MISP via REST API every 30 minutes, converting malicious IP addresses and domains into OSQuery IOC packs and TheHive alert rules.
+- **Feed Aggregation:** Ingests active indicators from abuse.ch URLhaus, ThreatFox, CIRCL, and Feodo Tracker.
+- **Taxonomy & Galaxy Tagging:** Threat events are correlated with MITRE ATT&CK techniques, malware families (e.g., Cobalt Strike), and threat actor profiles.
+- **Automated Distribution:** The background daemon `ioc-sync.py` pulls verified indicators every 30 minutes to update endpoint query packs and detection blocklists.
 
 ---
 
-### 3. TheHive 5 Real-Time Security Alert Triage
+### 6. Cortex 3 Observable Enrichment & Analyzers Engine
 
-All security signals—Zeek notice alerts, RITA beaconing calculations, OSQuery differential findings, and MISP match indicators—converge into TheHive's central alert queue.
+Cortex automates observable analysis by dispatching multi-vendor reputation queries concurrently whenever an observable is attached to an incident case.
+
+![Cortex Analyzers](docs/screenshots/cortex-analyzers.png)
+
+**Analyst Workflow in Cortex:**
+- **Analyzer Execution:** Triggers modular analyzers for VirusTotal, AbuseIPDB, Shodan, and local MISP instances.
+- **Reputation Scoring:** Observables such as `185.220.101.47` receive unambiguous verdicts (e.g., `MALICIOUS (48/89 Engines)` and `AbuseIPDB 100% Confidence`).
+- **Enriched Case Context:** Findings are automatically appended to the parent case in TheHive to accelerate analyst triage.
+
+---
+
+### 7. TheHive 5 Real-Time Security Alert Triage
+
+Incoming detections from Zeek, RITA, Velociraptor, and OSQuery converge into TheHive's unified triage queue for analyst assessment.
 
 ![TheHive Alerts Triage](docs/screenshots/thehive-alerts.png)
 
 **Analyst Workflow in TheHive Triage:**
-- **Alert Queue:** Analysts review incoming alerts ranked by severity (`Low`, `Medium`, `High`, `Critical`).
-- **Contextual Observables:** Each alert contains pre-parsed observables (source IP, destination port, command line strings, hashes).
-- **One-Click Promotion:** Qualifying alerts are promoted into formal Incident Cases with pre-configured SOC response templates, while false positives are dismissed with documented rationale.
+- **Queue Assessment:** Analysts evaluate incoming alerts ranked by severity and detection tags.
+- **Pre-Parsed Observables:** Alerts arrive pre-populated with source IPs, destination ports, command lines, and hashes.
+- **Case Promotion:** True positive alerts are promoted to incident cases with one click, while benign activity is closed with audit notes.
 
 ---
 
-### 4. TheHive 5 Incident Case Management & Investigation
+### 8. TheHive 5 Incident Case Management & Investigation
 
-Once an alert is escalated, TheHive tracks the full investigation lifecycle following the SANS/NIST Incident Response framework (Identification, Containment, Eradication, Recovery, Lessons Learned).
+Tracks the full investigation lifecycle using standardized SANS/NIST Incident Response task templates.
 
 ![TheHive Case Management](docs/screenshots/thehive-cases.png)
 
 **Analyst Workflow in Case Management:**
-- **Task Delegation:** Standard Operating Procedures (SOPs) are automatically assigned to analysts (e.g., *Isolate Host*, *Acquire RAM Dump*, *Analyze Persistence*).
-- **Observable Enrichment via Cortex:** Analysts trigger Cortex analyzers directly from the case view to query VirusTotal, Shodan, and internal MISP instances without leaving the platform.
-- **Timeline & Audit Trail:** Every comment, attached PCAP, and mitigation action is immutably timestamped for post-incident review and metrics reporting.
+- **Task Delegation:** Structured playbooks guide the investigation across Triage, Containment, Forensics, Eradication, and Recovery.
+- **Timeline & Audit Trail:** Every analyst note, attached PCAP capture, and remediation action is immutably timestamped.
+- **Metrics & Reporting:** Quantifies Mean Time to Detect (MTTD) and Mean Time to Respond (MTTR).
 
 ---
 
-### 5. Shuffle SOAR Visual Incident Response Automation
+### 9. Shuffle SOAR Visual Incident Response Automation
 
-Shuffle automates repetitive triage tasks and executes rapid containment playbooks when high-severity incidents occur.
+Shuffle orchestrates cross-tool workflows visually, executing automated containment and notification actions in response to high-severity alerts.
 
 ![Shuffle Automation Workflow](docs/screenshots/shuffle-workflow.png)
 
 **Analyst Workflow in Shuffle:**
-- **Webhook Ingestion:** Listens for case creation webhooks emitted by TheHive.
-- **Conditional Decision Logic:** Filters alerts based on severity tags (`severity >= 3` or `tag:beaconing`).
+- **Event-Driven Triggers:** Webhooks emitted by TheHive initiate conditional workflow branches.
 - **Automated Containment Execution:**
-  - Invokes the Velociraptor API to execute host isolation via local packet filtering on the victim VM.
-  - Updates firewall blocklists to prevent external communication to the attacker IP.
-  - Posts execution confirmation and containment logs back into TheHive case notes.
+  - Invokes the Velociraptor API to enforce immediate host network isolation.
+  - Injects firewall drop rules on the network perimeter for confirmed malicious IPs.
+  - Records containment confirmation logs back into TheHive case notes.
 
 ---
 

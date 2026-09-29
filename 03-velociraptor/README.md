@@ -55,6 +55,14 @@ Start-Service VelociraptorFrontend
 
 ---
 
+## Velociraptor Live Threat Hunting Console
+
+![Velociraptor Hunting Console](../docs/screenshots/velociraptor-hunting.png)
+
+*Figure: Velociraptor Web UI (`https://192.168.50.30:8889`) Hunt Manager displaying results for `SOCLab.HuntPersistence`. The VQL query detected rogue crontab persistence and an unauthorized systemd service unit across target endpoints in under 2 seconds.*
+
+---
+
 ## Step 3 — Deploy Custom Hunt Artifacts
 
 ```bash

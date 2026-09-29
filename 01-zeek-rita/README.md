@@ -51,6 +51,14 @@ rita html-report --database zeek-$(date +%Y%m%d) --output /var/www/html/rita/
 
 ---
 
+## RITA Beaconing & Threat Analysis Dashboard
+
+![RITA Beaconing Analysis](../docs/screenshots/rita-beaconing-analysis.png)
+
+*Figure: RITA Analysis Report evaluating Zeek `conn.log` streams. Implants with high delta regularity (score > 0.90) and leptokurtic distribution peaks are automatically flagged for SOC investigation.*
+
+---
+
 ## Step 3 — Threat Hunting Scenarios
 
 ### Hunt 1 — Detect C2 Beaconing

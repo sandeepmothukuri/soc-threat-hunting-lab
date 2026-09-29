@@ -38,6 +38,14 @@ sudo ./install-osquery.sh
 
 ---
 
+## Interactive Threat Hunting Console (osqueryi)
+
+![OSQuery Threat Detection](../docs/screenshots/osquery-threat-detection.png)
+
+*Figure: Interactive `osqueryi` terminal console querying socket connections and temporary filesystems. An unauthorized reverse shell (`bash -i` connected to attacker IP `192.168.20.10:4444`) and a rogue SUID binary in `/tmp` are immediately surfaced through standard SQL syntax.*
+
+---
+
 ## Interactive Queries (osqueryi)
 
 ### Immediate Threat Hunting
